@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Diagram Updater</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      margin: 0; 
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+    }
+    
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+      font-weight: 300;
+      font-size: 2.2rem;
+    }
+    
+    .status-bar {
+      background: #f8f9fa;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #dc3545;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-dot.connected { background: #28a745; }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      min-width: 140px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      display: none;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e9ecef;
+      margin-bottom: 15px;
+    }
+    
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #666;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      min-width: auto;
+    }
+    
+    .tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+      background: linear-gradient(to bottom, rgba(102, 126, 234, 0.1), transparent);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    #log { 
+      white-space: pre-wrap; 
+      background: #1e1e1e; 
+      color: #d4d4d4; 
+      padding: 15px; 
+      height: 250px; 
+      overflow-y: auto; 
+      font-size: 12px; 
+      border: 1px solid #404040;
+      border-radius: 8px;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      line-height: 1.4;
+    }
+    
+    .log-success { color: #4ec9b0; }
+    .log-error { color: #f48771; }
+    .log-info { color: #9cdcfe; }
+    .log-warning { color: #dcdcaa; }
+    
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #e9ecef;
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 15px 0;
+      display: none;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    .diagram-preview {
+      margin: 15px 0;
+      padding: 15px;
+      border: 2px solid #007bff;
+      border-radius: 12px;
+      background: linear-gradient(to bottom, #f8f9ff, #ffffff);
+      position: relative;
+    }
+    
+    .diagram-preview h4 {
+      margin: 0 0 15px 0;
+      color: #007bff;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .diagram-preview iframe {
+      width: 100%;
+      height: 450px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    .download-section {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #28a745;
+      color: white;
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .download-link:hover {
+      background: #218838;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    .settings-panel {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .setting-group {
+      margin-bottom: 15px;
+    }
+    
+    .setting-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #495057;
+    }
+    
+    .setting-group input, .setting-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .toast.show {
+      transform: translateX(0);
+    }
+    
+    .toast.success { background: #28a745; }
+    .toast.error { background: #dc3545; }
+    .toast.info { background: #007bff; }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      display: block;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .collapsible {
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .collapsible:before {
+      content: '▼';
+      transition: transform 0.3s ease;
+    }
+    
+    .collapsible.collapsed:before {
+      transform: rotate(-90deg);
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        margin: 10px;
+        padding: 20px;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      button {
+        width: 100%;
+        max-width: 250px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Data Center Diagram Updater</h1>
+    
+    <div class="status-bar">
+      <div class="status-indicator">
+        <div class="status-dot" id="connectionStatus"></div>
+        <span id="connectionText">Not Connected</span>
+      </div>
+      <div id="lastUpdate">Never Updated</div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid" style="display: none;">
+      <div class="stat-card">
+        <span class="stat-value" id="totalObjects">0</span>
+        <span class="stat-label">Total Objects</span>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <button onclick="loadData()" id="updateBtn">
+        <span class="loading-spinner" id="loadingSpinner"></span>
+        <span>Update Diagram</span>
+      </button>
+      <button onclick="openGoogleSheet()" class="btn-secondary">
+        <span>Open Google Sheets</span>
+      </button>
+      <button onclick="toggleAutoUpdate()" class="btn-success" id="autoUpdateBtn">
+        <span>Auto Update: OFF</span>
+      </button>
+    </div>
+
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('logs')">📋 Logs</button>
+      <button class="tab" onclick="showTab('settings')">⚙️ Settings</button>
+      <button class="tab" onclick="showTab('preview')">👁️ Preview</button>
+    </div>
+    
+    <div id="logsTab" class="tab-content active">
+      <div id="log"></div>
+    </div>
+    
+    <div id="settingsTab" class="tab-content">
+      <div class="settings-panel">
+        <h3 class="collapsible" onclick="toggleCollapse(this)">Connection Settings</h3>
+        <div class="collapse-content">
+          <div class="setting-group">
+            <label for="sheetId">Google Sheet ID:</label>
+            <input type="text" id="sheetId" value="1tSKhIS3TpZ-pE6fbQJWCxRNOPsjnGPhKzVq1yOSOeDk">
+          </div>
+          <div class="setting-group">
+            <label for="apiKey">API Key:</label>
+            <input type="password" id="apiKey" value="AIzaSyDXaQs7swaKFaYHSaG-CUEEwCAxlqixRt8">
+          </div>
+          <div class="setting-group">
+            <label for="xmlPath">XML File Path:</label>
+            <input type="text" id="xmlPath" value="DASHBOARD_ver1.xml">
+          </div>
+        </div>
+        
+        <h3 class="collapsible" onclick="toggleCollapse(this)">Update Settings</h3>
+        <div class="collapse-content">
+          <div class="setting-group">
+            <label for="autoInterval">Auto-update Interval (minutes):</label>
+            <select id="autoInterval">
+              <option value="5">5 minutes</option>
+              <option value="15" selected>15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="previewTab" class="tab-content">
+      <div id="diagram"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentXmlContent = null;
+    let autoUpdateInterval = null;
+    let isAutoUpdateEnabled = false;
+    let stats = { total: 0, updated: 0 };
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span>${message}</span>`;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => toast.classList.add('show'), 100);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 3000);
+    }
+
+    function updateConnectionStatus(connected) {
+      const dot = document.getElementById('connectionStatus');
+      const text = document.getElementById('connectionText');
+      
+      if (connected) {
+        dot.classList.add('connected');
+        text.textContent = 'Connected';
+      } else {
+        dot.classList.remove('connected');
+        text.textContent = 'Disconnected';
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('totalObjects').textContent = stats.total;
+      document.getElementById('statsGrid').style.display = 'grid';
+    }
+
+    function showProgress(show = false, percent = 0) {
+      const progressBar = document.getElementById('progressBar');
+      const progressFill = document.getElementById('progressFill');
+      
+      if (show) {
+        progressBar.style.display = 'block';
+        progressFill.style.width = percent + '%';
+      } else {
+        progressBar.style.display = 'none';
+        progressFill.style.width = '0%';
+      }
+    }
+
+    function setLoading(loading) {
+      const btn = document.getElementById('updateBtn');
+      const spinner = document.getElementById('loadingSpinner');
+      
+      btn.disabled = loading;
+      spinner.style.display = loading ? 'block' : 'none';
+    }
+
+    function showTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Show selected tab
+      document.getElementById(tabName + 'Tab').classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function toggleCollapse(element) {
+      element.classList.toggle('collapsed');
+      const content = element.nextElementSibling;
+      content.style.display = element.classList.contains('collapsed') ? 'none' : 'block';
+    }
+
+    function toggleAutoUpdate() {
+      const btn = document.getElementById('autoUpdateBtn');
+      const interval = parseInt(document.getElementById('autoInterval').value);
+      
+      if (isAutoUpdateEnabled) {
+        clearInterval(autoUpdateInterval);
+        isAutoUpdateEnabled = false;
+        btn.innerHTML = '<span>Auto Update: OFF</span>';
+        btn.className = 'btn-success';
+        showToast('Auto-update disabled', 'info');
+      } else {
+        autoUpdateInterval = setInterval(loadData, interval * 60 * 1000);
+        isAutoUpdateEnabled = true;
+        btn.innerHTML = `<span>Auto Update: ON (${interval}m)</span>`;
+        btn.className = 'btn-success';
+        showToast(`Auto-update enabled (${interval} minutes)`, 'success');
+      }
+    }
+
+    function log(msg, type="info") {
+      const logBox = document.getElementById("log");
+      const colors = { 
+        info: "log-info", 
+        success: "log-success", 
+        error: "log-error", 
+        warning: "log-warning" 
+      };
+      
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('span');
+      entry.className = colors[type] || 'log-info';
+      entry.textContent = `${timestamp} - ${msg}\n`;
+      
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
+
+      // Keep only last 100 log entries
+      const entries = logBox.children;
+      if (entries.length > 100) {
+        logBox.removeChild(entries[0]);
+      }
+    }
+
+    function createXMLDownload(xmlContent) {
+      const blob = new Blob([xmlContent], { type: "text/xml" });
+      const url = URL.createObjectURL(blob);
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `diagram_${timestamp}.xml`;
+      
+      return { url, filename };
+    }
+
+    function createPreview(xmlContent) {
+      const encodedXml = encodeURIComponent(xmlContent);
+      const { url: xmlUrl, filename } = createXMLDownload(xmlContent);
+      
+      const previewDiv = document.createElement("div");
+      previewDiv.className = "diagram-preview";
+      
+      previewDiv.innerHTML = `
+        <h4>Latest Diagram Preview</h4>
+        <iframe src="https://viewer.diagrams.net/?highlight=0000ff&edit=_blank&layers=1&nav=1&title=Updated%20Diagram#R${encodedXml}"></iframe>
+        <div class="download-section">
+          <a href="${xmlUrl}" download="${filename}" class="download-link">
+            Download XML
+          </a>
+          <a href="https://viewer.diagrams.net/?highlight=0000ff&edit=_blank&layers=1&nav=1&title=Updated%20Diagram#R${encodedXml}" 
+             target="_blank" class="download-link" style="background: #007bff;">
+            Open in Draw.io
+          </a>
+        </div>
+        <p style="margin: 15px 0 0 0; font-size: 12px; color: #666; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+          <strong>Tip:</strong> Use the Draw.io link above to edit the diagram directly, or download the XML to import into your local Draw.io installation.
+        </p>
+      `;
+      
+      const diagramDiv = document.getElementById("diagram");
+      diagramDiv.innerHTML = '';
+      diagramDiv.appendChild(previewDiv);
+    }
+
+    function openGoogleSheet() {
+      const sheetId = document.getElementById('sheetId').value;
+      const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+      window.open(sheetUrl, '_blank');
+      log("Opening Google Sheet in new tab...", "info");
+      showToast('Opening Google Sheet', 'info');
+    }
+
+    function getSettings() {
+      return {
+        sheetId: document.getElementById('sheetId').value,
+        apiKey: document.getElementById('apiKey').value,
+        xmlPath: document.getElementById('xmlPath').value,
+        range: "Sheet1!A:Z"
+      };
+    }
+
+    async function loadData() {
+      const settings = getSettings();
+      
+      if (!settings.sheetId || !settings.apiKey) {
+        log("Missing Sheet ID or API Key", "error");
+        showToast('Please configure Sheet ID and API Key', 'error');
+        showTab('settings');
+        return;
+      }
+
+      setLoading(true);
+      showProgress(true, 10);
+      log("Starting update process...", "info");
+      
+      try {
+        updateConnectionStatus(false);
+        showProgress(true, 25);
+        
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${settings.range}?key=${settings.apiKey}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (!data.values) {
+          throw new Error('No data found in sheet');
+        }
+
+        updateConnectionStatus(true);
+        showProgress(true, 50);
+        
+        const headers = data.values[0];
+        const rows = data.values.slice(1).map(r => {
+          let obj = {};
+          headers.forEach((h,i) => obj[h] = r[i] || "");
+          return obj;
+        });
+        
+        stats.total = rows.length;
+        log(`Loaded ${rows.length} rows: ${headers.join(', ')}`, "success");
+
+        showProgress(true, 70);
+
+        // Load XML if not already loaded
+        if (!currentXmlContent) {
+          log("📄 Loading diagram XML...", "info");
+          const xmlRes = await fetch(settings.xmlPath);
+          if (!xmlRes.ok) throw new Error('Failed to load XML file');
+          currentXmlContent = await xmlRes.text();
+          log("✅ XML loaded successfully", "success");
+        }
+
+        showProgress(true, 90);
+
+        // Update diagram
+        const updated = updateDiagram(currentXmlContent, rows);
+        createPreview(updated);
+        
+        showProgress(true, 100);
+        
+        document.getElementById('lastUpdate').textContent = 
+          `Last Updated: ${new Date().toLocaleTimeString()}`;
+        
+        updateStats();
+        showToast('Diagram updated successfully!', 'success');
+        
+        setTimeout(() => showProgress(false), 1000);
+        
+      } catch (error) {
+        log(`Error: ${error.message}`, "error");
+        showToast(`Error: ${error.message}`, 'error');
+        updateConnectionStatus(false);
+        showProgress(false);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function updateDiagram(xml, sheetData) {
+      log("🔧 Processing diagram updates...", "info");
+      
+      let updatedXml = xml;
+      let updatedObjectIds = new Set(); // Track unique updated objects
+
+      sheetData.forEach((row, index) => {
+        if (!row.ID) return;
+
+        // Handle text replacements in labels
+        const labelPatterns = [
+          `(<object[^>]*\\bID="${row.ID}"[^>]*label=")([^"]*)(")`,
+          `(<object[^>]*label=")([^"]*?)("[^>]*\\bID="${row.ID}"[^>]*>)`,
+          `(<object[^>]*ID\\s*=\\s*"${row.ID}"[^>]*label\\s*=\\s*")([^"]*)(")`,
+          `(<object[^>]*\\bid="${row.ID}"[^>]*label=")([^"]*)(")`,
+        ];
+
+        let foundMatch = false;
+
+        labelPatterns.forEach((pattern) => {
+          if (foundMatch) return;
+
+          const objectRegex = new RegExp(pattern, "g");
+
+          const newXml = updatedXml.replace(
+            objectRegex,
+            (match, beforeLabel, labelContent, afterLabel) => {
+              foundMatch = true;
+
+              let updatedLabel = labelContent;
+              const originalLabel = labelContent; // Store original to compare
+
+              // Replace placeholders for all columns (except ID)
+              Object.keys(row).forEach((colName) => {
+                if (colName === "ID") return;
+
+                const placeholderRegex = new RegExp(`\\{\\{${colName}\\}\\}`, "g");
+                const value = row[colName] || "";
+
+                if (updatedLabel.includes(`{{${colName}}}`)) {
+                  // If value is "-", remove the entire line containing this placeholder
+                  if (value === "-" || value === "" || value === "N/A") {
+                    const lineRegex = new RegExp(
+                      `&lt;div&gt;[^&]*\\{\\{${colName}\\}\\}[^&]*&lt;/div&gt;`,
+                      "g"
+                    );
+                    updatedLabel = updatedLabel.replace(lineRegex, "");
+
+                    const simpleLineRegex = new RegExp(
+                      `[^<]*\\{\\{${colName}\\}\\}[^<]*<br>`,
+                      "g"
+                    );
+                    updatedLabel = updatedLabel.replace(simpleLineRegex, "");
+                  } else {
+                    updatedLabel = updatedLabel.replace(placeholderRegex, value);
+                  }
+                }
+              });
+
+              // Only count as updated if the label actually changed
+              if (updatedLabel !== originalLabel) {
+                updatedObjectIds.add(row.ID); // Track this object ID as updated
+              }
+
+              return beforeLabel + updatedLabel + afterLabel;
+            }
+          );
+
+          if (foundMatch) {
+            updatedXml = newXml;
+          }
+        });
+
+        // Handle STATUS → fillColor and fontColor updates
+        if (row.STATUS) {
+          const statusColors = {
+            "NORMAL": { fill: "#60a917", font: "#ffffff" },
+            "WARNING": { fill: "#ffff00", font: "#000000" },
+            "OUT OF SERVICE": { fill: "#ff0000", font: "#ffffff" },
+            "STANDBY": { fill: "#ffffff", font: "#000000" }
+          };
+
+          const status = row.STATUS.toString().toUpperCase().trim();
+          const colors = statusColors[status] || statusColors["STANDBY"];
+
+          const objectRegex = new RegExp(
+            `(<object[^>]*\\bID="${row.ID}"[\\s\\S]*?<mxCell[^>]*style=")([^"]*)(")`,
+            "gi"
+          );
+
+          let newXml = updatedXml.replace(
+            objectRegex,
+            (match, before, style, after) => {
+              let newStyle = style;
+              newStyle = newStyle.replace(/fillColor=[^;]+;?/gi, "");
+              newStyle = newStyle.replace(/fontColor=[^;]+;?/gi, "");
+              newStyle = `fillColor=${colors.fill};fontColor=${colors.font};` + newStyle;
+              return before + newStyle + after;
+            }
+          );
+
+          if (newXml !== updatedXml) {
+            updatedXml = newXml;
+            updatedObjectIds.add(row.ID); // Track status color updates too
+          }
+        }
+      });
+
+      // Auto-update Date_Time
+      const now = new Date();
+      now.setMinutes(0, 0, 0);
+
+      const optionsDate = {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+      const optionsTime = { hour: "numeric", minute: "2-digit" };
+      const formattedDate = now.toLocaleDateString("en-US", optionsDate);
+      const formattedTime = now.toLocaleTimeString("en-US", optionsTime);
+
+      const dateTimeText = `As of ${formattedDate} at ${formattedTime}`;
+      updatedXml = updatedXml.replace(/\{\{DATETIME\}\}/g, dateTimeText);
+
+      const updatesCount = updatedObjectIds.size; // Get count of unique updated objects
+
+      if (updatesCount > 0) {
+        log(`Successfully updated ${updatesCount} unique objects`, "success");
+      } else {
+        log("No objects updated - check ID matching", "warning");
+      }
+
+      return updatedXml;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      log("Diagram Updater initialized", "info");
+      
+      // Collapse settings sections by default
+      document.querySelectorAll('.collapsible').forEach(el => {
+        toggleCollapse(el);
+      });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          loadData();
+        } else if (e.key === 'o') {
+          e.preventDefault();
+          openGoogleSheet();
+        }
+      }
+    });
+
+  </script>
+</body>
+
+</html>
+
