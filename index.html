@@ -805,20 +805,22 @@
       });
 
       // Auto-update Date_Time
-      const now = new Date();
-      now.setMinutes(0, 0, 0);
+const now = new Date();
+const minutes = now.getMinutes();
+const roundedMinutes = minutes < 30 ? 0 : 30;
+now.setMinutes(roundedMinutes, 0, 0);
 
-      const optionsDate = {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      };
-      const optionsTime = { hour: "numeric", minute: "2-digit" };
-      const formattedDate = now.toLocaleDateString("en-US", optionsDate);
-      const formattedTime = now.toLocaleTimeString("en-US", optionsTime);
+const optionsDate = {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+};
+const optionsTime = { hour: "numeric", minute: "2-digit" };
+const formattedDate = now.toLocaleDateString("en-US", optionsDate);
+const formattedTime = now.toLocaleTimeString("en-US", optionsTime);
 
-      const dateTimeText = `As of ${formattedDate} at ${formattedTime}`;
-      updatedXml = updatedXml.replace(/\{\{DATETIME\}\}/g, dateTimeText);
+const dateTimeText = `As of ${formattedDate} at ${formattedTime}`;
+updatedXml = updatedXml.replace(/\{\{DATETIME\}\}/g, dateTimeText);
 
       const updatesCount = updatedObjectIds.size; // Get count of unique updated objects
 
@@ -858,4 +860,5 @@
 </body>
 
 </html>
+
 
